@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Channel } from '../types';
-import { Volume2, VolumeX, Star, Play, Pause, Heart, Settings, FastForward, Rewind } from 'lucide-react';
+import { Volume2, VolumeX, Star, Play, Pause, Heart, Settings, FastForward, Rewind, Maximize, Minimize } from 'lucide-react';
 import Hls from 'hls.js';
 
 interface VideoPlayerProps {
@@ -32,6 +32,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
   
   const [showControls, setShowControls] = useState(true);
   const [doubleTapAction, setDoubleTapAction] = useState<'forward' | 'rewind' | null>(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const handleUserActivity = useCallback(() => {
     setShowControls(true);
@@ -52,6 +53,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
           if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
       };
   }, [handleUserActivity]);
+
+  // Listen for Fullscreen changes (ESC key, etc.)
+  useEffect(() => {
+      const handleFullScreenChange = () => {
+          setIsFullScreen(!!document.fullscreenElement);
+      };
+      document.addEventListener('fullscreenchange', handleFullScreenChange);
+      return () => document.removeEventListener('fullscreenchange', handleFullScreenChange);
+  }, []);
 
   // OPTIMIZATION: Force volume to 100% immediately on Application Launch (Mount)
   useEffect(() => {
@@ -293,6 +303,39 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
     }
   };
 
+  const toggleFullScreen = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!containerRef.current) return;
+
+    if (!document.fullscreenElement) {
+        try {
+            await containerRef.current.requestFullscreen();
+            // Try locking orientation to landscape on mobile (Android)
+            if (screen.orientation && 'lock' in screen.orientation) {
+                try {
+                    // @ts-ignore - TS sometimes misses lock method definition in strict config
+                    await screen.orientation.lock('landscape').catch(() => {});
+                } catch (e) {
+                    console.log('Orientation lock not supported');
+                }
+            }
+        } catch (err) {
+            console.error("Error attempting to enable full-screen mode:", err);
+        }
+    } else {
+        if (document.exitFullscreen) {
+            await document.exitFullscreen();
+            // Unlock orientation on exit
+            if (screen.orientation && 'unlock' in screen.orientation) {
+                try {
+                     // @ts-ignore
+                    screen.orientation.unlock();
+                } catch(e) {}
+            }
+        }
+    }
+  };
+
   const lastTapRef = useRef<number>(0);
   const handleContainerClick = (e: React.MouseEvent) => {
       const now = Date.now();
@@ -345,7 +388,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
   return (
     <div 
         ref={containerRef}
-        className="relative w-full h-full bg-black overflow-hidden select-none"
+        className="relative w-full h-full bg-black overflow-hidden select-none group"
         onClick={handleContainerClick}
         onMouseMove={handleUserActivity}
         onTouchStart={handleUserActivity}
@@ -425,7 +468,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
                 )}
             </div>
             
-            <div className="flex items-center gap-1 sm:gap-4">
+            <div className="flex items-center gap-1 sm:gap-3">
                 <div className="flex items-center gap-2 group/vol">
                     <button onClick={toggleMute} className="p-2 text-white/80 hover:text-white transition-colors">
                         {isMuted || volume === 0 ? <VolumeX size={24}/> : <Volume2 size={24}/>}
@@ -448,8 +491,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
                         className="hidden sm:block w-0 sm:group-hover/vol:w-20 transition-all duration-300 accent-white"
                     />
                 </div>
-                <button onClick={() => setShowSettings(!showSettings)} className="p-2 text-white/80 transition-transform hover:rotate-45">
+                
+                <button onClick={() => setShowSettings(!showSettings)} className="p-2 text-white/80 transition-transform hover:rotate-45 hover:text-white">
                     <Settings size={24} />
+                </button>
+
+                <div className="w-px h-6 bg-white/10 mx-1"></div>
+
+                <button onClick={toggleFullScreen} className="p-2 text-white/80 hover:text-white transition-transform hover:scale-110">
+                    {isFullScreen ? <Minimize size={24} /> : <Maximize size={24} />}
                 </button>
             </div>
         </div>
