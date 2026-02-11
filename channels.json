@@ -2,12 +2,12 @@
 [
   {
     "id": "live1",
-    "name": "MJ TV Info",
-    "category": "Information",
+    "name": "ML TV",
+    "category": "Général",
     "description": "Diffusion en direct.",
     "videoUrl": "https://live20.bozztv.com/akamaissh101/ssh101/evtele2xrdc/playlist.m3u8",
     "thumbnail": "https://picsum.photos/id/1018/400/225",
-    "currentProgram": "Le Journal",
+    "currentProgram": "Diffusion en direct",
     "rating": 4.9,
     "isFavorite": true
   },
