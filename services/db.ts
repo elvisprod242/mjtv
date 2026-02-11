@@ -1,4 +1,5 @@
 import { Channel } from '../types';
+import { DEFAULT_CHANNELS } from '../constants';
 
 // Updated storage key to force refresh for MJ TV rename
 const STORAGE_KEY = 'mj_tv_data_v2';
@@ -9,6 +10,7 @@ export const DBService = {
    * Initialize the DB.
    * 1. Try to load from LocalStorage (user persistence).
    * 2. If empty, fetch from channels.json (seed data).
+   * 3. If fetch fails, use DEFAULT_CHANNELS from constants.
    */
   async init(): Promise<Channel[]> {
     try {
@@ -16,26 +18,40 @@ export const DBService = {
         const storedData = localStorage.getItem(STORAGE_KEY);
         
         if (storedData) {
-            console.log("Loaded channels from LocalStorage");
-            return JSON.parse(storedData);
+            try {
+                const parsed = JSON.parse(storedData);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    console.log("Loaded channels from LocalStorage");
+                    return parsed;
+                }
+            } catch (e) {
+                console.warn("Corrupt local storage data", e);
+            }
         }
 
-        // Fallback: Fetch from JSON file
+        // Fallback 1: Fetch from JSON file
         console.log("Fetching channels from JSON file...");
-        const response = await fetch(JSON_SOURCE);
-        if (!response.ok) {
-            throw new Error(`Failed to load ${JSON_SOURCE}`);
+        try {
+            const response = await fetch(JSON_SOURCE);
+            if (response.ok) {
+                const channels: Channel[] = await response.json();
+                if (Array.isArray(channels) && channels.length > 0) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(channels));
+                    return channels;
+                }
+            }
+        } catch (fetchError) {
+            console.warn("Failed to load channels.json", fetchError);
         }
-        
-        const channels: Channel[] = await response.json();
-        
-        // Save to LocalStorage for future persistence
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(channels));
-        
-        return channels;
+
+        // Fallback 2: Use hardcoded constants
+        console.log("Using default channels from constants");
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_CHANNELS));
+        return DEFAULT_CHANNELS;
+
     } catch (error) {
-        console.error("Failed to initialize DB from JSON", error);
-        return [];
+        console.error("Critical error initializing DB", error);
+        return DEFAULT_CHANNELS;
     }
   },
 

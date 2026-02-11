@@ -6,7 +6,7 @@ import VideoPlayer from './components/VideoPlayer';
 import ChannelList from './components/ChannelList';
 import AdminPanel from './components/AdminPanel';
 import LoginModal from './components/LoginModal';
-import { Menu, X, Loader } from 'lucide-react';
+import { Menu, X, Loader, RefreshCw } from 'lucide-react';
 
 const App: React.FC = () => {
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -117,7 +117,24 @@ const App: React.FC = () => {
       );
   }
 
-  if (channels.length === 0) return <div className="bg-black h-screen w-screen text-white flex items-center justify-center">Aucune chaîne disponible.</div>;
+  if (channels.length === 0) return (
+    <div className="bg-black h-screen w-screen text-white flex flex-col items-center justify-center gap-6 p-4 text-center">
+        <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center">
+            <X size={32} className="text-red-500 opacity-50" />
+        </div>
+        <div>
+            <h2 className="text-xl font-bold mb-2">Aucune chaîne disponible</h2>
+            <p className="text-gray-500 text-sm max-w-xs mx-auto">Impossible de charger le contenu pour le moment. Vérifiez votre connexion.</p>
+        </div>
+        <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+        >
+            <RefreshCw size={16} />
+            Réessayer
+        </button>
+    </div>
+  );
 
   return (
     <div className="relative w-screen h-screen bg-black overflow-hidden flex flex-col lg:flex-row">
