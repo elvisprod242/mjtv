@@ -2,7 +2,7 @@ import { Channel } from '../types';
 import { DEFAULT_CHANNELS } from '../constants';
 
 // Updated storage key to force refresh for ML TV rename and content update
-const STORAGE_KEY = 'ml_tv_data_v2';
+const STORAGE_KEY = 'ml_tv_data_v4';
 const JSON_SOURCE = 'channels.json';
 
 export const DBService = {

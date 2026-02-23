@@ -9,13 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^1.40.0",
+    "dexie": "4.0.1",
+    "fuse.js": "7.0.0",
+    "hls.js": "1.5.15",
+    "lucide-react": "^0.562.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "lucide-react": "^0.562.0",
-    "fuse.js": "7.0.0",
-    "dexie": "4.0.1",
-    "hls.js": "1.5.15",
-    "@google/genai": "^1.40.0"
+    "react-player": "^3.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

@@ -59,8 +59,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
       const handleFullScreenChange = () => {
           setIsFullScreen(!!document.fullscreenElement);
       };
+      
+      const handleWebkitFullScreenChange = () => {
+          // @ts-ignore
+          setIsFullScreen(!!document.webkitFullscreenElement);
+      };
+
       document.addEventListener('fullscreenchange', handleFullScreenChange);
-      return () => document.removeEventListener('fullscreenchange', handleFullScreenChange);
+      document.addEventListener('webkitfullscreenchange', handleWebkitFullScreenChange); // iOS listener
+      
+      return () => {
+          document.removeEventListener('fullscreenchange', handleFullScreenChange);
+          document.removeEventListener('webkitfullscreenchange', handleWebkitFullScreenChange);
+      };
   }, []);
 
   // OPTIMIZATION: Force volume to 100% immediately on Application Launch (Mount)
@@ -305,22 +316,36 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
 
   const toggleFullScreen = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    const video = videoRef.current;
+    // Check for iOS specifically where container fullscreen might fail or we prefer native player
+    if (video && (video as any).webkitEnterFullscreen && !containerRef.current?.requestFullscreen) {
+         (video as any).webkitEnterFullscreen();
+         return;
+    }
+
     if (!containerRef.current) return;
 
     if (!document.fullscreenElement) {
         try {
             await containerRef.current.requestFullscreen();
+            
             // Try locking orientation to landscape on mobile (Android)
+            // PC/Tablets will generally ignore this or fail silently which is desired
             if (screen.orientation && 'lock' in screen.orientation) {
                 try {
-                    // @ts-ignore - TS sometimes misses lock method definition in strict config
-                    await screen.orientation.lock('landscape').catch(() => {});
+                    // @ts-ignore
+                    await screen.orientation.lock('landscape');
                 } catch (e) {
-                    console.log('Orientation lock not supported');
+                    // Orientation lock not supported (Desktop/some tablets)
                 }
             }
         } catch (err) {
             console.error("Error attempting to enable full-screen mode:", err);
+            // Fallback for iOS if requestFullscreen fails
+            if (video && (video as any).webkitEnterFullscreen) {
+                 (video as any).webkitEnterFullscreen();
+            }
         }
     } else {
         if (document.exitFullscreen) {
@@ -399,7 +424,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
         ref={videoRef}
         className="relative z-10 w-full h-full object-contain sm:object-cover"
         playsInline
-        crossOrigin="anonymous"
         muted={isMuted} // State controlled
         onTimeUpdate={() => videoRef.current && setCurrentTime(videoRef.current.currentTime)}
         onLoadedMetadata={() => videoRef.current && setDuration(videoRef.current.duration)}
@@ -505,11 +529,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
         </div>
       </div>
 
-       {isBuffering && (
-           <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-50 backdrop-blur-md">
-               <div className="w-12 h-12 border-4 border-white/10 border-t-blue-500 rounded-full animate-spin"></div>
-           </div>
-       )}
+       {/* Removed buffering overlay */}
     </div>
   );
 };
