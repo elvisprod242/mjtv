@@ -1,7 +1,7 @@
 
 import { Channel } from './types';
 
-export const LIVE_STREAM_URL = 'https://playtv4k.live/live/EVTELE/index.m3u8';
+export const LIVE_STREAM_URL = 'https://live20.bozztv.com/akamaissh101/ssh101/evtele2xrdc/playlist.m3u8';
 export const MODEL_NAME = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
 export const DEFAULT_CHANNELS: Channel[] = [
