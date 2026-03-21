@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Channel } from '../types';
-import { Volume2, VolumeX, Star, Play, Pause, Heart, Settings, FastForward, Rewind, Maximize, Minimize } from 'lucide-react';
+import { Volume2, VolumeX, Star, Play, Pause, Heart, Settings, Maximize, Minimize, Monitor, Volume1 } from 'lucide-react';
 import Hls from 'hls.js';
 
 interface VideoPlayerProps {
@@ -28,10 +28,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
   const [volume, setVolume] = useState(1.0);
   
   const [showSettings, setShowSettings] = useState(false);
+  const [objectFit, setObjectFit] = useState<'contain' | 'cover'>('contain');
   const [isBuffering, setIsBuffering] = useState(true); // Default to buffering on load
   
   const [showControls, setShowControls] = useState(true);
-  const [doubleTapAction, setDoubleTapAction] = useState<'forward' | 'rewind' | null>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   const handleUserActivity = useCallback(() => {
@@ -361,31 +361,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
     }
   };
 
-  const lastTapRef = useRef<number>(0);
   const handleContainerClick = (e: React.MouseEvent) => {
-      const now = Date.now();
-      if (now - lastTapRef.current < 300) {
-          const rect = containerRef.current?.getBoundingClientRect();
-          if (rect) {
-              const x = e.clientX - rect.left;
-              if (x > rect.width / 2) {
-                  if (videoRef.current) videoRef.current.currentTime += 10;
-                  setDoubleTapAction('forward');
-              } else {
-                  if (videoRef.current) videoRef.current.currentTime -= 10;
-                  setDoubleTapAction('rewind');
-              }
-              setTimeout(() => setDoubleTapAction(null), 500);
-          }
+      // If paused, click always plays. If playing, click toggles controls.
+      if (!isPlaying) {
+          togglePlay();
       } else {
-          // If paused, click always plays. If playing, click toggles controls.
-          if (!isPlaying) {
-              togglePlay();
-          } else {
-              setShowControls(prev => !prev);
-          }
+          setShowControls(prev => !prev);
       }
-      lastTapRef.current = now;
       handleUserActivity();
   };
 
@@ -413,7 +395,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
   return (
     <div 
         ref={containerRef}
-        className="relative w-full h-full bg-black overflow-hidden select-none group"
+        className="relative w-full h-full bg-black overflow-hidden select-none group flex items-center justify-center"
         onClick={handleContainerClick}
         onMouseMove={handleUserActivity}
         onTouchStart={handleUserActivity}
@@ -422,21 +404,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
 
       <video
         ref={videoRef}
-        className="relative z-10 w-full h-full object-contain sm:object-cover"
+        className={`relative z-10 w-full h-full ${objectFit === 'contain' ? 'object-contain' : 'object-cover'}`}
         playsInline
         muted={isMuted} // State controlled
         onTimeUpdate={() => videoRef.current && setCurrentTime(videoRef.current.currentTime)}
         onLoadedMetadata={() => videoRef.current && setDuration(videoRef.current.duration)}
       />
-
-      {doubleTapAction && (
-          <div className={`absolute top-0 bottom-0 z-40 w-1/3 flex items-center justify-center bg-white/5 backdrop-blur-sm transition-opacity duration-300 ${doubleTapAction === 'forward' ? 'right-0' : 'left-0'}`}>
-             <div className="flex flex-col items-center text-white">
-                 {doubleTapAction === 'forward' ? <FastForward size={40} /> : <Rewind size={40} />}
-                 <span className="font-bold text-xs mt-2">10s</span>
-             </div>
-          </div>
-      )}
 
       {/* Top Overlay */}
       <div className={`absolute top-0 left-0 z-20 w-full bg-gradient-to-b from-black/80 to-transparent p-6 sm:p-10 transition-opacity duration-500 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
@@ -464,6 +437,49 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ channel, onRate, onToggleFavo
           <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
               <div className="bg-black/40 rounded-full p-6 backdrop-blur-md border border-white/10 animate-fade-in">
                   <Play size={48} className="text-white fill-white ml-1" />
+              </div>
+          </div>
+      )}
+
+      {/* Tap to Unmute Overlay (if browser forced mute on autoplay) */}
+      {isPlaying && isMuted && showControls && (
+          <div className="absolute top-24 left-1/2 -translate-x-1/2 z-30 animate-fade-in">
+              <button 
+                  onClick={toggleMute}
+                  className="flex items-center gap-2 bg-blue-600/90 hover:bg-blue-500 text-white px-4 py-2 rounded-full backdrop-blur-md shadow-lg transition-all"
+              >
+                  <VolumeX size={18} />
+                  <span className="text-sm font-bold">Activer le son</span>
+              </button>
+          </div>
+      )}
+
+      {/* Settings Menu */}
+      {showSettings && (
+          <div className="absolute bottom-24 right-6 z-40 bg-black/80 backdrop-blur-xl border border-white/10 rounded-2xl p-4 w-64 shadow-2xl animate-fade-in" onClick={e => e.stopPropagation()}>
+              <h3 className="text-white font-bold mb-3 text-sm flex items-center gap-2">
+                  <Settings size={16} />
+                  Paramètres du lecteur
+              </h3>
+              
+              <div className="space-y-4">
+                  <div>
+                      <label className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-2 block">Format de l'image</label>
+                      <div className="flex bg-white/5 rounded-lg p-1">
+                          <button 
+                              onClick={() => setObjectFit('contain')}
+                              className={`flex-1 text-xs py-1.5 rounded-md transition-all ${objectFit === 'contain' ? 'bg-white/20 text-white shadow' : 'text-gray-400 hover:text-white'}`}
+                          >
+                              Ajuster
+                          </button>
+                          <button 
+                              onClick={() => setObjectFit('cover')}
+                              className={`flex-1 text-xs py-1.5 rounded-md transition-all ${objectFit === 'cover' ? 'bg-white/20 text-white shadow' : 'text-gray-400 hover:text-white'}`}
+                          >
+                              Remplir
+                          </button>
+                      </div>
+                  </div>
               </div>
           </div>
       )}
